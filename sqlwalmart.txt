@@ -1,0 +1,131 @@
+/*   Which year had the highest sales?  */
+
+ SELECT 
+    SUBSTR(Date, 7, 10) AS Year,
+   round( SUM(sales),2) AS Total_Sales
+FROM 
+    Walmart_store_sales
+GROUP BY 
+    Year;
+ 
+
+/*what was weather in year with higest sales*/           
+WITH MaxSales AS (
+    SELECT 
+        SUBSTR(Date, 7, 10) AS Year,
+        SUM(sales) AS Total_Sales
+    FROM 
+        Walmart_store_sales
+    GROUP BY 
+        Year
+    ORDER BY 
+        Total_Sales DESC
+    LIMIT 1
+)
+SELECT 
+    s.Date,
+    s.sales,
+    s.holiday,
+    s.column6,
+    s.fuel,
+    s.CPI,
+    s.unenployment
+FROM 
+    Walmart_store_sales s
+ JOIN  MaxSales m ON 
+ SUBSTR(s.Date, 7, 10)=m.Year;
+ 
+/* corelation beetwen weather and sales */
+/* Conclude whether the weather has an essential impact on sales*/
+WITH MeanValues AS (
+    SELECT 
+        AVG(column6) AS Mean_Temperature,
+        AVG(sales) AS Mean_Sales
+    FROM 
+       Walmart_store_sales
+),
+VarianceValues AS (
+    SELECT 
+        AVG((column6 - Mean_Temperature) * (column6 - Mean_Temperature)) AS Variance_Temperature,
+        AVG((sales - Mean_Sales) * (sales - Mean_Sales)) AS Variance_Sales
+    FROM 
+        Walmart_store_sales, MeanValues
+),
+CovarianceValue AS (
+    SELECT 
+        AVG((column6 - Mean_Temperature) * (sales - Mean_Sales)) AS Covariance
+    FROM 
+        Walmart_store_sales, MeanValues
+)
+SELECT 
+    Covariance / (SQRT(Variance_Temperature) * SQRT(Variance_Sales)) AS Correlation_Coefficient
+FROM 
+    VarianceValues, CovarianceValue;
+
+/* determone does sales go hier around holidays*/
+
+WITH HolidaySales AS (
+    SELECT
+        SUBSTR(Date, 7, 10) AS Year,
+        AVG(sales) AS Holiday_Sales
+    FROM
+        Walmart_store_sales
+    WHERE
+        holiday ='1'
+    GROUP BY
+       SUBSTR(Date, 7, 10)
+),
+NonHolidaySales AS (
+    SELECT
+        SUBSTR(Date, 7, 10) AS Year,
+        AVG(sales) AS Non_Holiday_Sales
+    FROM
+       Walmart_store_sales
+    WHERE
+        holiday = '0'
+    GROUP BY
+       SUBSTR(Date, 7, 10)
+),
+RisingSales AS (
+    SELECT
+        HolidaySales.Year,
+        CASE
+            WHEN Holiday_Sales > Non_Holiday_Sales THEN 'Yes'
+            ELSE 'No'
+        END AS Rising_Sales
+    FROM
+        HolidaySales
+    JOIN
+        NonHolidaySales ON HolidaySales.Year = NonHolidaySales.Year
+)
+SELECT
+    Year,
+    Rising_Sales
+FROM
+    RisingSales;
+/* corelation beetwen fuel price  and sales */
+/* Conclude whether the fuel price  has an essential impact on sales*/
+WITH MeanValues AS (
+    SELECT 
+        AVG(fuel) AS Mean_fuel,
+        AVG(sales) AS Mean_Sales
+    FROM 
+       Walmart_store_sales
+),
+VarianceValues AS (
+    SELECT 
+        AVG((fuel - Mean_fuel) * (fuel - Mean_fuel)) AS Variance_fuel,
+        AVG((sales - Mean_Sales) * (sales - Mean_Sales)) AS Variance_Sales
+    FROM 
+        Walmart_store_sales, MeanValues
+),
+CovarianceValue AS (
+    SELECT 
+        AVG((fuel - Mean_fuel) * (sales - Mean_Sales)) AS Covariance
+    FROM 
+        Walmart_store_sales, MeanValues
+)
+SELECT 
+    Covariance / (SQRT(Variance_fuel) * SQRT(Variance_Sales)) AS Correlation_Coefficient
+FROM 
+    VarianceValues, CovarianceValue;
